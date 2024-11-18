@@ -427,8 +427,8 @@ class DoubleDQL:
         self.main_dqn.train()
         self.target_dqn.train()
 
-        # # Set the random seed for the episode for reproducibility
-        # np.random.seed(train_episode_start_idx + train_episodes_count)
+        # Set the random seed for the episode for reproducibility
+        np.random.seed(train_episode_start_idx + train_episodes_count)
 
         # Reset the environment and get the initial state
         state, _ = self.train_env.reset()
@@ -580,14 +580,14 @@ class DoubleDQL:
                     # Plot loss, rewards, and epsilon
                     plot_all(
                         t_list, train_loss, train_reward, train_episodes,
-                        eval_reward, eval_episodes, show=show_plot, path=path,
-                        text=saved_model_txt)
+                        eval_reward, eval_episodes, epsilon, show=show_plot,
+                        path=path, text=saved_model_txt)
 
                     # Reset the main-dqn to training mode
                     self.main_dqn.train()
 
-                # # Set the random seed for the episode for reproducibility
-                # np.random.seed(train_episode_start_idx + all_episode_count)
+                # Set the random seed for the episode for reproducibility
+                np.random.seed(train_episode_start_idx + train_episodes_count)
 
                 # Reset the environment and get the initial state and player
                 # ID for the first player

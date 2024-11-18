@@ -23,7 +23,8 @@ def main(args):
     random.seed(params['seed'])
 
     # env = CartPoleLeftRightEnv(gym.make("CartPole-v1"))
-    env = gym.make("CartPole-v1", render_mode="human")
+    env = gym.make("CartPole-v1",
+                   render_mode=("human" if args.render else None))
 
     # The DoubleDQL class object
     dqn = DoubleDQL(
@@ -56,7 +57,8 @@ def main(args):
     mean_reward, avg_steps = dqn.evaluate(num_episodes=args.num_episodes,
                                           epsilon=0)
 
-    print(f"Mean reward: {mean_reward}, Average steps: {avg_steps}")
+    print(f"Mean reward: {np.round(mean_reward, 4)}, "
+          f"Average steps: {np.round(avg_steps, 4)}")
 
 
 if __name__ == "__main__":

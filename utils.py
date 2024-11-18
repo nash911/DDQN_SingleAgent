@@ -30,6 +30,7 @@ def init_layer(layer, bias_const=0.0):
 def plot_all(train_t: Sequence[int], train_loss: Sequence[float],
              train_reward: Sequence[float], train_episode_t: Sequence[int],
              eval_reward: Sequence[float], eval_episode_t: Sequence[int],
+             epsilons: Sequence[float],
              # right_trans_perc: Sequence[float]
              text: str, path: str = None, show: bool = False) -> None:
     """
@@ -52,15 +53,16 @@ def plot_all(train_t: Sequence[int], train_loss: Sequence[float],
            A list of evaluation rewards.
        eval_episode_t: Sequence[int]
            A list of time-steps pertaining to the evaluation rewards.
+       epsilons: Sequence[float]
+           A list of epsilon values.
        right_trans_perc: Sequence[float]
            A list transition percentages.
 
     """
 
-    fig, axs = plt.subplots(2, figsize=(10, 11), sharey=False, sharex=False)
+    fig, axs = plt.subplots(3, figsize=(10, 14), sharey=False, sharex=False)
 
     # Training Loss plot
-    axs[0].clear()
     axs[0].plot(train_t, train_loss, color='red', label='Train')
     axs[0].set(title='Training Loss')
     axs[0].set(ylabel='Loss')
@@ -68,22 +70,27 @@ def plot_all(train_t: Sequence[int], train_loss: Sequence[float],
     axs[0].legend(loc='upper left')
 
     # Normalized episodic reward of the policy during training and evaluation
-    axs[1].clear()
     axs[1].plot(train_episode_t, train_reward, color='red', label='Train')
     axs[1].plot(eval_episode_t, eval_reward, color='blue', label='Evaluation')
     axs[1].set(title='Normalized Episode Reward')
     axs[1].set(ylabel='Normalized Reward')
-    axs[1].set(xlabel='Time-step')
+    axs[1].set(xlabel='Episode')
     axs[1].legend(loc='upper left')
 
     # # Percentage of transitions in replay memory with episode goal = "Right"
-    # axs[2].clear()
     # axs[2].plot(train_t, right_trans_perc, color='brown',
     #             label='Right Transitions')
     # axs[2].set(title="Percentage of Transitions with Goal = 'Right'")
     # axs[2].set(ylabel='[%]')
     # axs[2].set(xlabel='Time-Step')
     # axs[2].legend(loc='upper right')
+
+    # Epsilon plot
+    axs[2].plot(train_t, epsilons, color='green', label='Epsilon')
+    axs[2].set(title='Epsilon')
+    axs[2].set(ylabel='Epsilon')
+    axs[2].set(xlabel='Time-step')
+    axs[2].legend(loc='upper right')
 
     # Add text to the plot
     if text is not None:
