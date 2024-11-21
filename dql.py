@@ -493,7 +493,7 @@ class DoubleDQL:
                                              train_episodes_count)
 
         # The state -> action -> reward, next-state loop for policy training
-        while train_episodes_count < max_train_steps:
+        while train_step < max_train_steps:
             # Convert the observation to a torch tensor
             obs = torch.tensor(state, dtype=torch.float32).to(self.device)
 
