@@ -133,6 +133,7 @@ class ReplayMemory:
 
         # Calculate the probability of sampling each transition based on the
         # priority weights
+        # P(i) = pᵢ / Σₖ pₖ
         p = priority_weights / priority_weights.sum()
 
         while True:
@@ -146,6 +147,7 @@ class ReplayMemory:
             break
 
         # Calculate the importance weights for the sampled transitions
+        # wᵢ = (1/N * 1/P(i))ᵝ
         importance_weights = torch.tensor((1.0 / (
             self.mem_count * priority_weights[sampled_idx])) ** self._beta,
             dtype=torch.float32).to(self.device)
@@ -464,7 +466,6 @@ class DoubleDQL:
         t_list = list()
         train_loss = list()
         train_reward = list()
-        train_steps = list()
         train_episode_steps = list()
         train_episodes = list()
 
@@ -475,10 +476,9 @@ class DoubleDQL:
 
         train_step = 0
         episode_steps = 0
+        episode_reward = 0.0
         train_episodes_count = 0
-        best_train_reward = 0.0
         best_eval_reward = 0.0
-        best_train_model_episode = 0
         saved_model_txt = None
         train_episode_start_idx = 10_000
 
@@ -518,6 +518,9 @@ class DoubleDQL:
             # Save the transition {sₜ, aₜ, rₜ, sₜ₊₁} to the Replay Memory
             self.replay_memory.add(obs, action, float(reward), done,
                                    action_mask)
+
+            # Save the normalized episode reward
+            episode_reward += reward
 
             # Count the number of steps in the current episode
             episode_steps += 1
@@ -611,6 +614,12 @@ class DoubleDQL:
                 # Increment episode count
                 train_episodes_count += 1
 
+                # Append the normalized episode reward and episode length to the
+                # respective lists
+                train_reward.append(episode_reward/500)
+                train_episode_steps.append(episode_steps)
+                train_episodes.append(train_episodes_count)
+
                 # Policy evaluation period
                 if train_episodes_count % np.abs(evaluation_freq) == 0:
                     # Evaluate the current policy
@@ -664,8 +673,10 @@ class DoubleDQL:
                 state, _ = self.train_env.reset(seed=train_episode_start_idx +
                                                      train_episodes_count)
 
-                train_episode_steps.append(episode_steps)
                 episode_steps = 0
+
+                # Reset episode reward and steps
+                episode_reward = 0.0
 
         end_time = time.time()
         print("\nTraining Time: %.2f(s)" % (end_time - start_time))
