@@ -50,6 +50,8 @@ def save_learning_params(max_train_episodes: int):
     learning_params['epsilon'] = EPSILON
     learning_params['epsilon_decay'] = EPSILON_DECAY
     learning_params['epsilon_min'] = EPSILON_MIN
+    learning_params['per_alpha'] = PER_ALPHA
+    learning_params['per_beta'] = PER_BETA
 
     # NN
     # --
@@ -120,14 +122,13 @@ def main(args):
     # The DoubleDQL class object
     dqn = DoubleDQL(
         train_env=env, eval_env=eval_env, loss_fn=mse_loss, lr=LR, gamma=GAMMA,
-        epsilon=EPSILON, replay_mem_size=REPLAY_MEM_SIZE,
-        hl1_size=HL1_SIZE, hl2_size=HL2_SIZE, device=device)
+        epsilon=EPSILON, replay_mem_size=REPLAY_MEM_SIZE, per_alpha=PER_ALPHA,
+        per_beta=PER_BETA, hl1_size=HL1_SIZE, hl2_size=HL2_SIZE, device=device)
 
     # Reset Target-DQN parameters to Main-DQN
     dqn.update_target_dqn()
 
     # Train the agent
-
     dqn.train(max_train_steps=args.max_train_steps,
               init_training_period=INITIAL_PERIOD,
               main_update_period=MAIN_UPDATE_PERIOD,
@@ -157,16 +158,18 @@ if __name__ == '__main__':
     EPSILON = 1.0
     EPSILON_DECAY = 0.99999
     EPSILON_MIN = 0.01
+    PER_ALPHA = 0.6
+    PER_BETA = 0.4
 
     # NN
     # ----
     HL1_SIZE = 48
     HL2_SIZE = 48
-    BATCH_SIZE = 128#32
+    BATCH_SIZE = 128
 
     # DQL
     # -----
-    REPLAY_MEM_SIZE = 200_000 #100_000
+    REPLAY_MEM_SIZE = 100_000
     INITIAL_PERIOD = 5000
     MAIN_UPDATE_PERIOD = 4
     TARGET_UPDATE_PERIOD = 100
