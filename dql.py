@@ -1,10 +1,8 @@
 import numpy as np
 import time
+
 from collections import OrderedDict
-
-from typing import Sequence, Tuple, Mapping
-
-# from cartpole_leftright_env import CartPoleLeftRightEnv as Env
+from typing import Sequence, Tuple
 from gymnasium import Env
 
 import torch
@@ -275,8 +273,6 @@ class DoubleDQL:
         self.eval_env = eval_env
         self.device = device
 
-        # self.state_shape = train_env.observation_shape()
-        # self.action_shape = train_env.action_shape()
         self.state_shape = train_env.observation_space.shape
         self.action_shape = (train_env.action_space.n,)
 
@@ -385,12 +381,9 @@ class DoubleDQL:
             steps = 0
             done = False
 
-            # Set the random seed for the episode for reproducibility
-            np.random.seed(episode)
-
             # Reset the environment and get the initial state and player ID for
             # the first player
-            state, _ = self.eval_env.reset()#episode)
+            state, _ = self.eval_env.reset(seed=episode)
 
             while not done:
                 # Convert the observation to a torch tensor and add padding
@@ -493,12 +486,9 @@ class DoubleDQL:
         self.main_dqn.train()
         self.target_dqn.train()
 
-        # Set the random seed for the episode for reproducibility
-        np.random.seed(train_episode_start_idx + train_episodes_count)
-
         # Reset the environment and get the initial state
-        state, _ = self.train_env.reset()
-            #train_episode_start_idx + train_episodes_count)
+        state, _ = self.train_env.reset(seed=train_episode_start_idx +
+                                             train_episodes_count)
 
         # The state -> action -> reward, next-state loop for policy training
         while train_episodes_count < max_train_steps:
@@ -669,13 +659,10 @@ class DoubleDQL:
                     # Reset the main-dqn to training mode
                     self.main_dqn.train()
 
-                # Set the random seed for the episode for reproducibility
-                np.random.seed(train_episode_start_idx + train_episodes_count)
-
                 # Reset the environment and get the initial state and player
                 # ID for the first player
-                state, _ = self.train_env.reset()#
-                    # train_episode_start_idx + train_episodes_count)
+                state, _ = self.train_env.reset(seed=train_episode_start_idx +
+                                                     train_episodes_count)
 
                 train_episode_steps.append(episode_steps)
                 episode_steps = 0

@@ -7,12 +7,10 @@ import json
 
 from datetime import datetime
 from shutil import rmtree
-from copy import deepcopy
 
 import torch
 import torch.nn as nn
 
-from cartpole_leftright_env import CartPoleLeftRightEnv
 from dql import DoubleDQL
 
 
@@ -106,7 +104,6 @@ def main(args):
     with open(training_dir + 'learning/params.dat', 'w') as param_file:
         json.dump(learning_params, param_file, indent=4)
 
-    # env = CartPoleLeftRightEnv(gym.make("CartPole-v1"))
     env = gym.make("CartPole-v1")
 
     print(f"env.observation_space.size(): {env.observation_space.shape}")
@@ -116,7 +113,6 @@ def main(args):
     mse_loss = nn.MSELoss()
 
     # Create an additional CartPole-v1 environment for evaluation
-    # eval_env = CartPoleLeftRightEnv(gym.make("CartPole-v1"))
     eval_env = gym.make("CartPole-v1")
 
     # The DoubleDQL class object
