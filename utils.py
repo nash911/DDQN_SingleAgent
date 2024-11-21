@@ -1,8 +1,7 @@
-import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from typing import Sequence, Mapping, Tuple, List
+from typing import Sequence
 
 
 def init_layer(layer, bias_const=0.0):
@@ -30,9 +29,8 @@ def init_layer(layer, bias_const=0.0):
 def plot_all(train_t: Sequence[int], train_loss: Sequence[float],
              train_reward: Sequence[float], train_episode_t: Sequence[int],
              eval_reward: Sequence[float], eval_episode_t: Sequence[int],
-             epsilons: Sequence[float],
-             # right_trans_perc: Sequence[float]
-             text: str, path: str = None, show: bool = False) -> None:
+             epsilons: Sequence[float], text: str, path: str = None,
+             show: bool = False) -> None:
     """
        Method for plotting learning curves during policy training.
 
@@ -55,9 +53,12 @@ def plot_all(train_t: Sequence[int], train_loss: Sequence[float],
            A list of time-steps pertaining to the evaluation rewards.
        epsilons: Sequence[float]
            A list of epsilon values.
-       right_trans_perc: Sequence[float]
-           A list transition percentages.
-
+       text : str
+           Text to be displayed on the plot.
+       path : str
+           Path to save the plot.
+       show : bool
+           Flag to display the plot.
     """
 
     fig, axs = plt.subplots(3, figsize=(10, 14), sharey=False, sharex=False)
@@ -77,14 +78,6 @@ def plot_all(train_t: Sequence[int], train_loss: Sequence[float],
     axs[1].set(xlabel='Episode')
     axs[1].legend(loc='upper left')
 
-    # # Percentage of transitions in replay memory with episode goal = "Right"
-    # axs[2].plot(train_t, right_trans_perc, color='brown',
-    #             label='Right Transitions')
-    # axs[2].set(title="Percentage of Transitions with Goal = 'Right'")
-    # axs[2].set(ylabel='[%]')
-    # axs[2].set(xlabel='Time-Step')
-    # axs[2].legend(loc='upper right')
-
     # Epsilon plot
     axs[2].plot(train_t, epsilons, color='green', label='Epsilon')
     axs[2].set(title='Epsilon')
@@ -97,7 +90,6 @@ def plot_all(train_t: Sequence[int], train_loss: Sequence[float],
         x_min, x_max = axs[0].get_xlim()
         y_min, y_max = axs[0].get_ylim()
         axs[0].text(x_min + 0.5, y_max * 1.1, text, fontsize=12)
-
 
     if path is not None:
         plt.savefig(path + "plots/learning_curves.png")

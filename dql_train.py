@@ -174,8 +174,6 @@ if __name__ == '__main__':
     # Logging
     # ---------
     EVALUATION_FREQUENCY = 200
-    RECORD = True
-    RECORD_PATH = 'videos/images/'
 
     parser = argparse.ArgumentParser(description='DDQL for CartPole-v1')
     parser.add_argument('--max_train_steps', type=int, default=1_500_000,

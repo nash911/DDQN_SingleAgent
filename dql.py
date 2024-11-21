@@ -1,7 +1,6 @@
 import numpy as np
 import time
 
-from collections import OrderedDict
 from typing import Sequence, Tuple
 from gymnasium import Env
 
@@ -42,7 +41,14 @@ class ReplayMemory:
            device : torch.device
                The device to run the training on.
         """
+        # Run assertions to ensure that the memory size, alpha, and beta
+        # parameters are valid
+        assert mem_size > 0, "Memory size must be greater than zero."
+        assert alpha >= 0.0, ("(PER) Alpha must be greater than or equal to"
+                              "zero.")
+        assert beta >= 0.0, "(PER) Beta must be greater than or equal to zero."
 
+        # Initialize the replay memory buffer parameters
         self.mem_size = mem_size
         self.state_shape = state_shape
         self.action_shape = action_shape
@@ -54,12 +60,6 @@ class ReplayMemory:
         self.device = device
         self.mem_count = 0
         self.current_index = 0
-
-        self.states = OrderedDict()
-        self.actions = OrderedDict()
-        self.rewards = OrderedDict()
-        self.terminals = OrderedDict()
-        self.action_masks = OrderedDict()
 
         self.states = torch.zeros((self.mem_size, *self.state_shape),
                                   dtype=torch.float32).to(device=self.device)
@@ -121,20 +121,23 @@ class ReplayMemory:
                actions, rewards, terminal booleans, and the respective
                next-states (s').
         """
-        # Sample transitions from the replay memory buffer based on the
-        # priority weights
-        with torch.no_grad():
-            priority_weights = (
-                self.td_delta[:self.mem_count].detach().cpu().numpy())
+        if self._alpha > 0.0:
+            # Sample transitions from the replay memory buffer based on the
+            # priority weights
+            with torch.no_grad():
+                priority_weights = (
+                    self.td_delta[:self.mem_count].detach().cpu().numpy())
 
-            # Set the priority weight of the most recent transition to zero, to
-            # prevent sampling it
-            priority_weights[self.current_index - 1] = 0.0
+                # Set the priority weight of the most recent transition to zero,
+                # to prevent sampling it
+                priority_weights[self.current_index - 1] = 0.0
 
-        # Calculate the probability of sampling each transition based on the
-        # priority weights
-        # P(i) = pᵢ / Σₖ pₖ
-        p = priority_weights / priority_weights.sum()
+            # Calculate the probability of sampling each transition based on the
+            # priority weights
+            # P(i) = pᵢ / Σₖ pₖ
+            p = priority_weights / priority_weights.sum()
+        else:
+            p = None
 
         while True:
             sampled_idx = np.random.choice(
@@ -146,11 +149,14 @@ class ReplayMemory:
                 continue
             break
 
-        # Calculate the importance weights for the sampled transitions
-        # wᵢ = (1/N * 1/P(i))ᵝ
-        importance_weights = torch.tensor((1.0 / (
-            self.mem_count * priority_weights[sampled_idx])) ** self._beta,
-            dtype=torch.float32).to(self.device)
+        if self._beta > 0.0:
+            # Calculate the importance weights for the sampled transitions
+            # wᵢ = (1/N * 1/P(i))ᵝ
+            importance_weights = torch.tensor((1.0 / (
+                self.mem_count * priority_weights[sampled_idx])) ** self._beta,
+                dtype=torch.float32).to(self.device)
+        else:
+            importance_weights = None
 
         return (
             self.states[sampled_idx],
@@ -172,10 +178,6 @@ class ReplayMemory:
            max_td_delta : float
                The maximum TD error in the replay memory buffer.
         """
-        # if max_td_delta > self._max_td_delta:
-        #     print(f"Previous Max TD Error: {self._max_td_delta} -- "
-        #           f"New Max TD Error: {max_td_delta}")
-
         if self._max_td_delta_updated:
             self._max_td_delta = max(max_td_delta, self._max_td_delta)
         else:
@@ -327,7 +329,7 @@ class DoubleDQL:
            ----------
            q_values : torch.tensor
                An array of q-values.
-           action_mask : np.array
+           action_mask : np.ndarray
                An array of booleans indicating the valid actions.
            epsilon : float
                The probability of sampling an action from a uniform
@@ -371,8 +373,8 @@ class DoubleDQL:
                Mean episode length
         """
 
-        # Initialize lists to store normalized episode rewards and
-        # episode lengths
+        # Initialize lists to store normalized episode rewards and episode
+        # lengths
         average_episode_reward = list()
         episode_length = list()
 
@@ -510,7 +512,8 @@ class DoubleDQL:
 
             # Step through the environment with action aₜ, receiving reward rₜ,
             # and observing the new state sₜ₊₁
-            state, reward, terminated, truncated, info = self.train_env.step(int(action))
+            state, reward, terminated, truncated, info = self.train_env.step(
+                int(action))
 
             # Check if is the end of the episode
             done = terminated or truncated
@@ -527,12 +530,6 @@ class DoubleDQL:
 
             # Increment the training step count
             train_step += 1
-
-            # if train_step % 1000 == 0:
-            #     end_time = time.time()
-            #     print(f"Step: {train_step//1000} -- Time: "
-            #           f"{np.round(end_time - start_time, 4)}s")
-            #     start_time = time.time()
 
             if self.replay_memory.__len__() > init_training_period:
                 # Decay exploration parameter Ɛ over time to a minimum of
@@ -575,9 +572,13 @@ class DoubleDQL:
                     ).reshape(-1)
 
                     # Calculate loss:
-                    # L(θ) = 𝔼[(Q(s,a|θ) - y)²]
-                    loss = self.loss_fn(pred_q_a * importance_weights,
-                                        target_q * importance_weights)
+                    if importance_weights is not None:
+                        # L(θ) = 𝔼[(Q(s,a|θ) - y)² * wᵢ]
+                        loss = self.loss_fn(pred_q_a * importance_weights,
+                                            target_q * importance_weights)
+                    else:
+                        # L(θ) = 𝔼[(Q(s,a|θ) - y)²]
+                        loss = self.loss_fn(pred_q_a, target_q)
 
                     # Calculate the gradient of the loss w.r.t main-dqn
                     # parameters θ
@@ -614,8 +615,8 @@ class DoubleDQL:
                 # Increment episode count
                 train_episodes_count += 1
 
-                # Append the normalized episode reward and episode length to the
-                # respective lists
+                # Append the normalized episode reward and episode length to
+                # the respective lists
                 train_reward.append(episode_reward/500)
                 train_episode_steps.append(episode_steps)
                 train_episodes.append(train_episodes_count)
@@ -638,16 +639,8 @@ class DoubleDQL:
                             f"{mean_eval_reward} -- Mean Eval Steps: " +
                             f"{mean_eval_steps}")
 
-                    # # Save a snapshot of the best policy (main-dqn) based on the
-                    # # training results
-                    # if train_rl_win >= best_train_reward:
-                    #     torch.save(self.main_dqn.state_dict(), path + (
-                    #         'models/best_train_policy.pth'))
-                    #     best_train_reward = train_rl_win
-                    #     best_train_model_episode = train_episodes_count
-
-                    # Save a snapshot of the best policy (main-dqn) based on the
-                    # evaluation results
+                    # Save a snapshot of the best policy (main-dqn) based on
+                    # the evaluation results
                     if mean_eval_reward >= best_eval_reward:
                         torch.save(self.main_dqn.state_dict(), path + (
                             'models/best_eval_policy_' +
@@ -673,10 +666,9 @@ class DoubleDQL:
                 state, _ = self.train_env.reset(seed=train_episode_start_idx +
                                                      train_episodes_count)
 
-                episode_steps = 0
-
                 # Reset episode reward and steps
                 episode_reward = 0.0
+                episode_steps = 0
 
         end_time = time.time()
         print("\nTraining Time: %.2f(s)" % (end_time - start_time))

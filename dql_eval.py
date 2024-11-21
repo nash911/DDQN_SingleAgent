@@ -22,9 +22,8 @@ def main(args):
     np.random.seed(params['seed'])
     random.seed(params['seed'])
 
-    # env = CartPoleLeftRightEnv(gym.make("CartPole-v1"))
-    env = gym.make("CartPole-v1",
-                   render_mode=("human" if args.render else None))
+    env = gym.make("CartPole-v1", render_mode=("human" if args.render else
+                                               None))
 
     # The DoubleDQL class object
     dqn = DoubleDQL(
@@ -54,8 +53,8 @@ def main(args):
     dqn.load_main_dqn(model_path)
 
     # Evaluate the policy
-    mean_reward, avg_steps = dqn.evaluate(num_episodes=args.num_episodes,
-                                          epsilon=0)
+    mean_reward, avg_steps = dqn.evaluate(
+        num_episodes=args.num_episodes, epsilon=0)
 
     print(f"Mean reward: {np.round(mean_reward, 4)}, "
           f"Average steps: {np.round(avg_steps, 4)}")
