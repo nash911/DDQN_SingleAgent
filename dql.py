@@ -101,8 +101,8 @@ class ReplayMemory:
         self.action_masks[self.current_index % self.mem_size] = action_mask
         self.td_delta[self.current_index % self.mem_size] = self._max_td_delta
 
-        self.current_index = ((self.current_index + 1) % self.mem_size)
-        self.mem_count = max(self.mem_count, self.current_index)
+        self.current_index = (self.current_index + 1) % self.mem_size
+        self.mem_count = min(self.mem_count + 1, self.mem_size)
 
     def sample_batch(self, batch_size: int = 128) -> Sequence[torch.tensor]:
         """
