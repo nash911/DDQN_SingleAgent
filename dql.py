@@ -61,6 +61,7 @@ class ReplayMemory:
         self.mem_count = 0
         self.current_index = 0
 
+        # Initialize the replay memory buffer arrays
         self.states = torch.zeros((self.mem_size, *self.state_shape),
                                   dtype=torch.float32).to(device=self.device)
         self.actions = torch.zeros(
@@ -574,8 +575,8 @@ class DoubleDQL:
                     # Calculate loss:
                     if importance_weights is not None:
                         # L(θ) = 𝔼[(Q(s,a|θ) - y)² * wᵢ]
-                        loss = self.loss_fn(pred_q_a * importance_weights,
-                                            target_q * importance_weights)
+                        loss = torch.mean(
+                            importance_weights * (pred_q_a - target_q) ** 2)
                     else:
                         # L(θ) = 𝔼[(Q(s,a|θ) - y)²]
                         loss = self.loss_fn(pred_q_a, target_q)
@@ -588,16 +589,20 @@ class DoubleDQL:
                     # Update main-dqn parameters θ:
                     self.optimizer.step()
 
-                    # Update the sampled transitions' TD errors in the replay
-                    # memory buffer
-                    # δⱼ = |Q(sⱼ,aⱼ|θ) - yⱼ|ᵅ
-                    td_delta = ((torch.abs(target_q - pred_q_a) + 1e-5) **
-                                self.replay_memory.alpha)
-                    self.replay_memory.td_delta[sampled_idx] = td_delta
+                    if importance_weights is not None:
+                        # Update the sampled transitions' TD errors in the replay
+                        # memory buffer
+                        with torch.no_grad():
+                            # δⱼ = |Q(sⱼ,aⱼ|θ) - yⱼ|ᵅ
+                            td_delta = (
+                                    (torch.abs(target_q - pred_q_a) + 1e-5) **
+                                    self.replay_memory.alpha)
+                        self.replay_memory.td_delta[sampled_idx] = td_delta
 
-                    # Update the maximum TD error in the replay memory buffer
-                    self.replay_memory.update_max_td_delta(
-                        torch.max(td_delta).item())
+                        # Update the maximum TD error in the replay memory
+                        # buffer
+                        self.replay_memory.update_max_td_delta(
+                            torch.max(td_delta).item())
 
                     # For plotting
                     t_list.append(train_step)
