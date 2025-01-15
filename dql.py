@@ -135,7 +135,8 @@ class ReplayMemory:
 
             # Calculate the probability of sampling each transition based on the
             # priority weights
-            # P(i) = pᵢ / Σₖ pₖ
+            # P(i) = pᵢᵅ / Σₖpₖᵅ
+            priority_weights = priority_weights ** self._alpha
             p = priority_weights / priority_weights.sum()
         else:
             p = None
@@ -154,7 +155,7 @@ class ReplayMemory:
             # Calculate the importance weights for the sampled transitions
             # wᵢ = (1/N * 1/P(i))ᵝ
             importance_weights = torch.tensor((1.0 / (
-                self.mem_count * priority_weights[sampled_idx])) ** self._beta,
+                self.mem_count * p[sampled_idx])) ** self._beta,
                 dtype=torch.float32).to(self.device)
         else:
             importance_weights = None
@@ -196,6 +197,10 @@ class ReplayMemory:
     @property
     def beta(self):
         return self._beta
+
+    @beta.setter
+    def beta(self, value):
+        self._beta = value
 
 
 class FCAgent(nn.Module):
@@ -271,9 +276,9 @@ class DoubleDQL:
     def __init__(self, train_env: Env, eval_env: Env, loss_fn=None,
                  gamma: float = 0.99, epsilon: float = 1.0, lr: float = 0.001,
                  per_alpha: float = 0.6, per_beta: float = 0.4,
-                 replay_mem_size: int = 200_000, hl1_size: int = 64,
-                 hl2_size: int = 64, device: torch.device = torch.device("cpu")
-                 ):
+                 update_per_beta: bool = False, replay_mem_size: int = 200_000,
+                 hl1_size: int = 64, hl2_size: int = 64, device: torch.device =
+                 torch.device("cpu")):
         self.train_env = train_env
         self.eval_env = eval_env
         self.device = device
@@ -302,6 +307,8 @@ class DoubleDQL:
 
         self.gamma = gamma
         self.epsilon = epsilon
+        self.per_beta_init = per_beta
+        self._update_per_beta = update_per_beta
 
     def update_target_dqn(self) -> None:
         """
@@ -593,16 +600,20 @@ class DoubleDQL:
                         # Update the sampled transitions' TD errors in the replay
                         # memory buffer
                         with torch.no_grad():
-                            # δⱼ = |Q(sⱼ,aⱼ|θ) - yⱼ|ᵅ
-                            td_delta = (
-                                    (torch.abs(target_q - pred_q_a) + 1e-5) **
-                                    self.replay_memory.alpha)
+                            # δⱼ = |Q(sⱼ,aⱼ|θ) - yⱼ|
+                            td_delta = (torch.abs(target_q - pred_q_a) + 1e-5)
                         self.replay_memory.td_delta[sampled_idx] = td_delta
 
                         # Update the maximum TD error in the replay memory
                         # buffer
                         self.replay_memory.update_max_td_delta(
                             torch.max(td_delta).item())
+
+                        if self._update_per_beta:
+                            # Anneal the PER beta parameter
+                            self.replay_memory.beta = min(
+                                1.0, self.replay_memory.beta +
+                                ((1.0 - self.per_beta_init) / max_train_steps))
 
                     # For plotting
                     t_list.append(train_step)

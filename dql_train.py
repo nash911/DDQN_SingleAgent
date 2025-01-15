@@ -50,6 +50,7 @@ def save_learning_params(max_train_episodes: int):
     learning_params['epsilon_min'] = EPSILON_MIN
     learning_params['per_alpha'] = PER_ALPHA
     learning_params['per_beta'] = PER_BETA
+    learning_params['update_per_beta'] = UPDATE_PER_BETA
 
     # NN
     # --
@@ -119,7 +120,8 @@ def main(args):
     dqn = DoubleDQL(
         train_env=env, eval_env=eval_env, loss_fn=mse_loss, lr=LR, gamma=GAMMA,
         epsilon=EPSILON, replay_mem_size=REPLAY_MEM_SIZE, per_alpha=PER_ALPHA,
-        per_beta=PER_BETA, hl1_size=HL1_SIZE, hl2_size=HL2_SIZE, device=device)
+        per_beta=PER_BETA, update_per_beta=UPDATE_PER_BETA, hl1_size=HL1_SIZE,
+        hl2_size=HL2_SIZE, device=device)
 
     # Reset Target-DQN parameters to Main-DQN
     dqn.update_target_dqn()
@@ -156,6 +158,7 @@ if __name__ == '__main__':
     EPSILON_MIN = 0.01
     PER_ALPHA = 0.6
     PER_BETA = 0.4
+    UPDATE_PER_BETA = True
 
     # NN
     # ----
