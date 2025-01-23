@@ -165,8 +165,8 @@ class ReplayMemory:
             self.actions[sampled_idx],
             self.rewards[sampled_idx],
             self.terminals[sampled_idx],
-            self.states[(sampled_idx + 1) % self.mem_count],  # s'
-            self.action_masks[(sampled_idx + 1) % self.mem_count],
+            self.states[(sampled_idx + 1) % self.mem_size],  # s'
+            self.action_masks[(sampled_idx + 1) % self.mem_size],
             importance_weights,
             sampled_idx
         )
